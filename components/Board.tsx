@@ -36,16 +36,17 @@ export default function Board({
     const highlighted = highlightedTiles.includes(tileIndex);
     return (
       <TouchableOpacity
+        key={`tile${rIndex}${cIndex}`}
         style={{
           flex: 1,
-          backgroundColor: (rIndex + cIndex) % 2 ? "darkgray" : "gray",
+          backgroundColor: (rIndex + cIndex) % 2 ? "#dac799" : "#917158",
           justifyContent: "center",
           alignItems: "center",
           borderColor: highlighted
-            ? "blue"
+            ? "cyan"
             : (rIndex + cIndex) % 2
-            ? "darkgray"
-            : "gray",
+            ? "#dac799"
+            : "#917158",
           borderWidth: 2,
         }}
         activeOpacity={1}
@@ -67,10 +68,11 @@ export default function Board({
     if (!piece) return null;
     return (
       <TouchableOpacity
+        key={`piece-${piece.color}${rIndex}${cIndex}`}
         style={{
           backgroundColor: piece.color === "dark" ? "black" : "white",
           borderRadius: 20,
-          borderColor: "blue",
+          borderColor: "cyan",
           borderWidth: isSelected ? 2 : 0,
           flex: 0.7,
           aspectRatio: 1,
@@ -96,7 +98,11 @@ export default function Board({
   }
 
   function renderKingMark(): JSX.Element {
-    return <Text style={{ color: "gold", fontWeight: "bold" }}>K</Text>;
+    return (
+      <Text style={{ color: "gold", fontWeight: "bold", fontSize: 20 }}>
+        亗
+      </Text>
+    );
   }
 
   function renderRow(rIndex: number): JSX.Element {
@@ -119,7 +125,13 @@ export default function Board({
   }
 
   return (
-    <View key="board-container" style={{ aspectRatio: 1 }}>
+    <View
+      key="board-container"
+      style={{
+        aspectRatio: 1,
+        borderWidth: 8,
+        borderColor: "#5f301f",
+      }}>
       {renderRows()}
     </View>
   );

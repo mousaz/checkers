@@ -1,25 +1,39 @@
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View, Image } from "react-native";
 import Player from "../players/Player";
-import getIcon from "../resources/icons";
+import Piece from "../game/Piece";
 
 export interface PlayerComponentProps {
+  pieces: Piece[];
   player: Player;
   isTurn: boolean;
+  isWinner?: boolean;
+  onConcede: () => void;
 }
 
 export default function PlayerComponent({
+  pieces,
   player,
   isTurn,
+  isWinner,
+  onConcede,
 }: PlayerComponentProps): JSX.Element {
+  const fontColor = player.color === "light" ? "black" : "white";
   return (
     <View
       key={`${player.color}-player-area`}
       style={{
         flex: 1,
-        backgroundColor: "white",
+        backgroundColor: player.color === "light" ? "white" : "black",
         borderRadius: 15,
         borderWidth: 2,
-        borderColor: isTurn ? "red" : "white",
+        borderColor:
+          isWinner === undefined
+            ? isTurn
+              ? "red"
+              : "white"
+            : isWinner
+            ? "gold"
+            : "gray",
         margin: 10,
         padding: 10,
       }}>
@@ -27,20 +41,25 @@ export default function PlayerComponent({
         lineBreakMode="tail"
         numberOfLines={2}
         ellipsizeMode="tail"
-        style={{ fontWeight: "bold", fontSize: 20 }}>
+        style={{ fontWeight: "bold", fontSize: 20, color: fontColor }}>
         {player.name || player.color}
       </Text>
+      <Text style={{ color: fontColor }}>{`🪦 ${12 - pieces.length}\t亗 ${
+        pieces.filter(p => p.isKing).length
+      }`}</Text>
       {player.type === "Human" && isTurn && (
         <TouchableOpacity
-          style={{
-            backgroundColor: "lightblue",
-            borderBlockColor: "blue",
-            width: 60,
-            height: 30,
-            justifyContent: "center",
-            alignContent: "center",
-          }}>
-          <img src={`data:image/jpeg;base64,${getIcon("concede")}`} />
+          style={{ flexDirection: "row-reverse" }}
+          onPress={onConcede}>
+          <Text
+            style={{
+              width: 20,
+              height: 20,
+              fontWeight: "bold",
+              color: "yellow",
+            }}>
+            🏳
+          </Text>
         </TouchableOpacity>
       )}
     </View>

@@ -52,8 +52,17 @@ export default class AlphaBetaPlayer extends Player {
   }
 
   private getNextMove(tiles: Tile[]): Move {
-    return this.executeAlphaBeta(tiles, -Infinity, Infinity, true, this._level)
-      .move!;
+    console.log("--------------------Turn Start----------------");
+    const res = this.executeAlphaBeta(
+      tiles,
+      -Infinity,
+      Infinity,
+      true,
+      this._level,
+    );
+    console.log(`Chosen value is: ${res.value}`);
+    console.log("--------------------Turn end------------------");
+    return res.move!;
   }
 
   private executeAlphaBeta(
@@ -63,7 +72,11 @@ export default class AlphaBetaPlayer extends Player {
     isMax: boolean,
     depth: number,
   ): { move: Move | null; value: number } {
-    const children: MoveState[] = this.expandChildren(state);
+    console.log(`Step is ${isMax ? "Max" : "Min"} with depth: ${depth}`);
+    const children: MoveState[] = this.expandChildren(
+      state,
+      isMax ? this._color : this._color === "dark" ? "light" : "dark",
+    );
     if (depth === 0 || !children.length) {
       return { value: this.evaluate(state), move: null };
     }
@@ -86,7 +99,10 @@ export default class AlphaBetaPlayer extends Player {
           bestMove = children[i].actualMove!;
         }
 
-        if (beta <= alpha) break;
+        if (beta <= alpha) {
+          console.log(`Cut in Max at depth ${depth}`);
+          break;
+        }
       }
 
       return { move: bestMove, value: value };
@@ -108,24 +124,16 @@ export default class AlphaBetaPlayer extends Player {
         bestMove = children[i].actualMove!;
       }
 
-      if (beta <= alpha) break;
+      if (beta <= alpha) {
+        console.log(`Cut in Min at depth ${depth}`);
+        break;
+      }
     }
 
     return { move: bestMove, value: value };
   }
 
   private evaluate(state: Tile[]): number {
-    let numOfPieces: number = 0;
-    for (let i = 0; i < state.length; i++) {
-      const piece = state[i].piece;
-      if (!piece || piece.color !== this._color) continue;
-      numOfPieces++;
-    }
-
-    return numOfPieces;
-  }
-
-  private evaluate2(state: Tile[]): number {
     const size = Math.sqrt(state.length);
     const middleRange = [
       state.length / 2 - size * 2,
@@ -136,7 +144,9 @@ export default class AlphaBetaPlayer extends Player {
     let numOfAttackingPieces = 0;
     let numOfMiddlePieces = 0;
     let numOfPossibleMoves = 0;
-    let numOfOpponentPieces = 0;
+    let numOfOpponentMen = 0;
+    let numOfOpponentKings = 0;
+    let numOfUnsafePieces = 0;
     for (let i = 0; i < state.length; i++) {
       const piece = state[i].piece;
       if (!piece) continue;
@@ -144,30 +154,105 @@ export default class AlphaBetaPlayer extends Player {
 
       if (piece.color === this._color) {
         piece.isKing ? numOfKings++ : numOfMen++;
-        if (moves.some(m => m.isKill)) numOfAttackingPieces++;
-        if (i >= middleRange[0] && i <= middleRange[1]) numOfMiddlePieces++;
+        if (moves.some(m => m.isKill)) {
+          numOfAttackingPieces++;
+        }
+
+        if (i >= middleRange[0] && i <= middleRange[1]) {
+          numOfMiddlePieces++;
+        }
+
         numOfPossibleMoves += moves.length;
+        if (!this.isPieceSafe(state, piece.tileNumber, size)) {
+          numOfUnsafePieces++;
+        }
       } else {
-        numOfOpponentPieces++;
+        piece.isKing ? numOfOpponentKings++ : numOfOpponentMen++;
       }
     }
 
-    const numberOfKills = 12 - numOfOpponentPieces;
-    return (
-      2 * numOfMen +
-      3 * numOfKings +
-      2 * numOfAttackingPieces +
-      5 * numOfMiddlePieces +
-      numOfPossibleMoves +
-      10 * numberOfKills
+    console.log(
+      `NumberOfPieces: ${numOfMen}, NumberOfKings: ${numOfKings},
+      NumberOfAttackingPieces: ${numOfAttackingPieces}, numOfMiddlePieces: ${numOfMiddlePieces}, 
+      numOfPossibleMoves: ${numOfPossibleMoves}, numOfOpponentKings: ${numOfOpponentKings}
+      numOfOpponentMen: ${numOfOpponentMen}, numOfUnsafePieces: ${numOfUnsafePieces}`,
     );
+
+    const attackingWeight = 3 * Math.pow(3, numOfKings);
+    const menWeight = 3;
+    const middlePiecesWeight = 5;
+    const possibleMovesWeight = 1;
+    const numOfUnsafePiecesWeight =
+      numOfMen + numOfKings < numOfOpponentKings + numOfOpponentMen + 5 ? 3 : 1;
+    const kingsWeight = numOfKings - numOfOpponentKings < 2 ? 10 : 5;
+
+    let value =
+      menWeight * numOfMen +
+      kingsWeight * numOfKings +
+      attackingWeight * numOfAttackingPieces +
+      middlePiecesWeight * numOfMiddlePieces +
+      possibleMovesWeight * numOfPossibleMoves -
+      menWeight * numOfOpponentMen -
+      kingsWeight * numOfOpponentKings -
+      numOfUnsafePiecesWeight * numOfUnsafePieces;
+
+    if (numOfKings + numOfMen === 0 || !numOfPossibleMoves) {
+      // set value to a small number to avoid this state
+      // because it means that player lost game
+      value = -1000;
+    }
+
+    console.log(`Value is: ${value}`);
+    return value;
   }
 
-  private expandChildren(state: Tile[]): MoveState[] {
+  private isPieceSafe(
+    state: Tile[],
+    tileNumber: number,
+    size: number,
+  ): boolean {
+    const piece = state[tileNumber].piece!;
+    const row = Math.floor(tileNumber / size);
+    const column = tileNumber % size;
+    for (const rowStep of [1, -1]) {
+      const r = row + rowStep;
+      if (r < 0 || r >= size) continue;
+      for (const colStep of [1, -1]) {
+        const c = column + colStep;
+        if (c >= 0 && c < size) {
+          const opponentPiece = state[r * size + c].piece;
+          if (opponentPiece && opponentPiece.color !== piece.color) {
+            // Check if opponent piece can do the kill move
+            if (
+              opponentPiece.isKing ||
+              (opponentPiece.color === "dark" && rowStep === 1) ||
+              (opponentPiece.color === "light" && rowStep === -1)
+            ) {
+              const jumpRow = row + rowStep * -1;
+              const jumpCol = column + colStep * -1;
+              if (
+                jumpRow >= 0 &&
+                jumpRow < size &&
+                jumpCol >= 0 &&
+                jumpCol < size &&
+                !state[jumpRow * size + jumpCol].piece
+              ) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private expandChildren(state: Tile[], pieceColor: PieceColor): MoveState[] {
     let children: MoveState[] = [];
     for (let i = 0; i < state.length; i++) {
       const piece = state[i].piece;
-      if (!piece || piece.color !== this._color) continue;
+      if (!piece || piece.color !== pieceColor) continue;
       const size = Math.sqrt(state.length);
       children = [
         ...children,
@@ -237,11 +322,11 @@ export default class AlphaBetaPlayer extends Player {
   private getExpansionDepth(level: PlayerLevel | number): number {
     switch (level) {
       case "Beginner":
-        return 3;
+        return 2;
       case "Normal":
         return 5;
       case "Expert":
-        return 9;
+        return 8;
       default:
         return typeof level === "number" && level >= 2 ? level : 3;
     }

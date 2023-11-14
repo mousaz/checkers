@@ -48,6 +48,10 @@ export default class Board {
     );
   }
 
+  public getPieces(color?: PieceColor): Piece[] {
+    return this._pieces.filter(p => !color || color === p.color);
+  }
+
   public movePiece(fromIndex: number, toIndex: number): void {
     const fullSize = this._size * this._size;
     if (
@@ -201,13 +205,13 @@ export default class Board {
   }
 
   private static getPotentialMoves(
-    raw: number,
+    row: number,
     column: number,
     size: number,
     rowStep: -1 | 1,
   ): number[][] {
     const moves = [];
-    const r = raw + rowStep;
+    const r = row + rowStep;
     const c1 = column - 1;
     const c2 = column + 1;
     if (r >= 0 && r < size) {

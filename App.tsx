@@ -1,24 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { useColorScheme, View, Text } from "react-native";
-import { Colors } from "react-native/Libraries/NewAppScreen";
-import Controls from "./components/Controls";
+import { View, Text, TouchableOpacity } from "react-native";
+import ScoreComponent, { GameStatus } from "./components/ScoreComponent";
 import Board from "./components/Board";
-import { Provider } from "react-redux";
-import { store } from "./store";
 import GameBoard, { Move } from "./game/Board";
 import Tile from "./game/Tile";
 import Player, { MoveOutcome } from "./players/Player";
 import NewGameControls from "./components/NewGameControls";
-import { PieceColor } from "./game/Piece";
+import Piece, { PieceColor } from "./game/Piece";
 import PlayerComponent from "./components/PlayerComponent";
 
 function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === "dark";
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
   const [isControlsOpened, setIsControlsOpened] = useState(true);
   const [players, setPlayers] = useState<Player[]>([]);
   const [gameBoard, setGameBoard] = useState<GameBoard>();
@@ -29,7 +20,15 @@ function App(): JSX.Element {
     mode: PieceColor | "all";
     lockOnPieceNumber?: number;
   }>({ mode: "all" });
-  const [gameResult, setGameResult] = useState<{}>();
+  const [gameStatus, setGameStatus] = useState<GameStatus>({
+    status: "Running",
+    comment: "Let's Start!",
+  });
+  const [movesHistory, setMovesHistory] = useState<Move[]>([]);
+  const [stateHistory, setStateHistory] = useState<{ [key: string]: number }>(
+    {},
+  );
+  const [pieces, setPieces] = useState<Piece[]>([]);
 
   useEffect(() => {
     if (gameBoard) {
@@ -40,6 +39,10 @@ function App(): JSX.Element {
       });
     }
   }, [gameBoard]);
+
+  useEffect(() => {
+    gameStatus.status === "Over" && setBoardLockMode({ mode: "all" });
+  }, [gameStatus]);
 
   useEffect(() => {
     if (!players?.length || currentPlayer === undefined) return;
@@ -54,14 +57,21 @@ function App(): JSX.Element {
       result: MoveOutcome;
       move?: Move;
     }) => {
+      const nextTurnPlayerId = currentPlayer === players[0] ? 1 : 0;
       switch (result) {
         case "Yield":
-          setCurrentPlayer(
-            currentPlayer === players[0] ? players[1] : players[0],
-          );
+          if (updateStateHistory(move!)) {
+            setCurrentPlayer(players[nextTurnPlayerId]);
+          }
+
+          setPieces(gameBoard?.getPieces()!);
           break;
         case "Concede":
-          setGameResult({});
+          setGameStatus({
+            status: "Over",
+            winner: players[nextTurnPlayerId],
+            comment: `${currentPlayer.name || currentPlayer.color} conceded`,
+          });
           break;
         case "Continue":
           if (currentPlayer.type === "Human") {
@@ -72,10 +82,23 @@ function App(): JSX.Element {
               lockOnPieceNumber: continueIndex,
             });
           }
-          currentPlayer.play(gameBoard!).then(handler);
+
+          if (updateStateHistory(move!)) {
+            currentPlayer.play(gameBoard!).then(handler);
+          }
+
+          setPieces(gameBoard?.getPieces()!);
+          setGameStatus({
+            ...gameStatus,
+            comment: "Things are getting serious!",
+          });
           break;
         case "NoMove":
-          setGameResult({});
+          setGameStatus({
+            status: "Over",
+            winner: players[nextTurnPlayerId],
+            comment: `${currentPlayer.name || currentPlayer.color} can't move`,
+          });
           break;
       }
     };
@@ -96,9 +119,69 @@ function App(): JSX.Element {
     );
   }
 
+  function updateStateHistory(move: Move): boolean {
+    movesHistory.push(move);
+    if (
+      movesHistory.length >= 100 &&
+      !movesHistory.slice(-100).some(m => m.isKill)
+    ) {
+      setGameStatus({
+        status: "Over",
+        comment: "100 moves without any kills.",
+      });
+      return false;
+    }
+
+    const state = gameBoard?.getTiles();
+    const stateKey = state?.reduce((agg, t) => {
+      const piece = t.piece;
+      if (!piece) {
+        agg += "0";
+      } else {
+        switch (piece.color) {
+          case "dark":
+            agg += piece.isKing ? "2" : "1";
+            break;
+          case "light":
+            agg += piece.isKing ? "4" : "3";
+            break;
+        }
+      }
+
+      return agg;
+    }, "9")!;
+
+    stateHistory[stateKey] = !stateHistory[stateKey]
+      ? 1
+      : stateHistory[stateKey] + 1;
+
+    if (stateHistory[stateKey] === 3) {
+      setGameStatus({
+        status: "Over",
+        comment: "Same state repeated three times!",
+      });
+      return false;
+    }
+
+    setGameStatus({ ...gameStatus, comment: "It's on!" });
+
+    return true;
+  }
+
   function movePiece(fromIndex: number, toIndex: number): void {
     if (!gameBoard) return;
     gameBoard.movePiece(fromIndex, toIndex);
+  }
+
+  function startNewGame(): void {
+    setPlayers([]);
+    setIsControlsOpened(true);
+    setGameStatus({
+      status: "Running",
+      comment: "Let's Start!",
+    });
+    setMovesHistory([]);
+    setStateHistory({});
   }
 
   function renderNewGameControls(): JSX.Element {
@@ -165,37 +248,85 @@ function App(): JSX.Element {
             backgroundColor: "lightblue",
           }}>
           <PlayerComponent
+            pieces={pieces.filter(p => p.color === players[0].color)}
             player={players[0]}
             isTurn={currentPlayer === players[0]}
-          />
-          <Controls
-            startNewGame={() => {
-              setPlayers([]);
-              setIsControlsOpened(true);
+            isWinner={
+              gameStatus.status === "Over"
+                ? gameStatus.winner === players[0]
+                : undefined
+            }
+            onConcede={() => {
+              setGameStatus({
+                status: "Over",
+                winner: players[1],
+                comment: `${
+                  currentPlayer?.name || currentPlayer?.color
+                } conceded`,
+              });
             }}
           />
+          <ScoreComponent
+            status={gameStatus}
+            currentPlayer={
+              gameStatus.status === "Running" ? currentPlayer : undefined
+            }
+          />
           <PlayerComponent
+            pieces={pieces.filter(p => p.color === players[1].color)}
             player={players[1]}
             isTurn={currentPlayer === players[1]}
+            isWinner={
+              gameStatus.status === "Over"
+                ? gameStatus.winner === players[1]
+                : undefined
+            }
+            onConcede={() => {
+              setGameStatus({
+                status: "Over",
+                winner: players[0],
+                comment: `${
+                  currentPlayer?.name || currentPlayer?.color
+                } conceded`,
+              });
+            }}
           />
+        </View>
+        <View style={{ flex: 0.4, marginBottom: 5 }}>
+          <TouchableOpacity
+            style={{
+              alignSelf: "center",
+              backgroundColor: "pink",
+              width: 30,
+              height: 30,
+              borderRadius: 5,
+            }}
+            onPress={startNewGame}>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "700",
+                textAlign: "center",
+                textAlignVertical: "center",
+              }}>
+              ⟳
+            </Text>
+          </TouchableOpacity>
         </View>
       </>
     );
   }
 
   return (
-    <Provider store={store}>
-      <View
-        style={{
-          flex: 1,
-          height: "100%",
-          width: "100%",
-          padding: 5,
-          backgroundColor: backgroundStyle.backgroundColor,
-        }}>
-        {isControlsOpened ? renderNewGameControls() : renderGamePlayBoard()}
-      </View>
-    </Provider>
+    <View
+      style={{
+        flex: 1,
+        height: "100%",
+        width: "100%",
+        padding: 5,
+      }}>
+      {isControlsOpened ? renderNewGameControls() : renderGamePlayBoard()}
+    </View>
   );
 }
 

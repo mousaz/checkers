@@ -1,6 +1,6 @@
 import Board, { Move } from "../game/Board";
 import { PieceColor } from "../game/Piece";
-import Player, { MoveOutcome, PlayerType } from "./Player";
+import Player, { MoveOutcome } from "./Player";
 
 export default class HumanPlayer extends Player {
   constructor(name: string, color: PieceColor) {
