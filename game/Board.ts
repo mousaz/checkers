@@ -122,7 +122,7 @@ export default class Board {
   }
 
   public getPossibleMovesForPiece(tileNumber: number): Move[] {
-    return Board.getMovesForPiece(tileNumber, this._tiles.flat(), this._size);
+    return Board.getMovesForPiece(tileNumber, this._tiles, this._size);
   }
 
   public static getMovesForPiece(
@@ -187,7 +187,7 @@ export default class Board {
 
     // If there are kill moves then they are the only possible moves
     // If not return the normal moves.
-    return (killMoves.length ? killMoves : moves).flatMap(m => {
+    return (killMoves.length ? killMoves : moves).map(m => {
       return {
         isKill: !!killMoves.length,
         from: tileNumber,

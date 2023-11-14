@@ -265,7 +265,9 @@ export default class AlphaBetaPlayer extends Player {
     }
 
     const hasKills = children.some(c => c.actualMove!.isKill);
-    return !hasKills ? children : children.filter(c => c.actualMove!.isKill);
+    return this.shuffle(
+      !hasKills ? children : children.filter(c => c.actualMove!.isKill),
+    );
   }
 
   private expandChildrenForMove(
@@ -317,6 +319,20 @@ export default class AlphaBetaPlayer extends Player {
     }
 
     return { actualMove, move, state: newState };
+  }
+
+  private shuffle(children: MoveState[]): MoveState[] {
+    if (children.length <= 2) return children;
+    let shuffled: MoveState[] = [...children];
+    for (let i = 0; i < children.length / 2; i++) {
+      const randomIndex = (Math.random() * 100) % children.length;
+      shuffled = [
+        ...shuffled.slice(randomIndex),
+        ...shuffled.slice(0, randomIndex),
+      ];
+    }
+
+    return shuffled;
   }
 
   private getExpansionDepth(level: PlayerLevel | number): number {

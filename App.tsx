@@ -29,6 +29,7 @@ function App(): JSX.Element {
     {},
   );
   const [pieces, setPieces] = useState<Piece[]>([]);
+  const [error, setError] = useState<Error>();
 
   useEffect(() => {
     if (gameBoard) {
@@ -103,20 +104,16 @@ function App(): JSX.Element {
       }
     };
 
-    currentPlayer.play(gameBoard!).then(handler);
+    currentPlayer
+      .play(gameBoard!)
+      .then(handler)
+      .catch(err => setError(err));
   }, [players, currentPlayer]);
 
   function showPossibleMoves(tileIndex: number): void {
     if (!gameBoard || !currentPlayer) return;
-    const allMoves = gameBoard.getAllPossibleMovesForPieces(
-      currentPlayer.color,
-    );
-    setHighlightedTiles(
-      allMoves.reduce((moves: number[], m: Move) => {
-        if (m.from === tileIndex) moves.push(m.to);
-        return moves;
-      }, []),
-    );
+    const moves = gameBoard!.getPossibleMovesForPiece(tileIndex);
+    setHighlightedTiles(moves.map(m => m.to));
   }
 
   function updateStateHistory(move: Move): boolean {
@@ -149,7 +146,7 @@ function App(): JSX.Element {
       }
 
       return agg;
-    }, "9")!;
+    }, "")!;
 
     stateHistory[stateKey] = !stateHistory[stateKey]
       ? 1
@@ -317,6 +314,24 @@ function App(): JSX.Element {
     );
   }
 
+  function renderErrorBanner(): JSX.Element {
+    return (
+      <View
+        style={{
+          minHeight: 35,
+          backgroundColor: "pink",
+          padding: 6,
+        }}>
+        <Text
+          style={{
+            color: "red",
+          }}>
+          {error?.message}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View
       style={{
@@ -325,6 +340,7 @@ function App(): JSX.Element {
         width: "100%",
         padding: 5,
       }}>
+      {error && renderErrorBanner()}
       {isControlsOpened ? renderNewGameControls() : renderGamePlayBoard()}
     </View>
   );
