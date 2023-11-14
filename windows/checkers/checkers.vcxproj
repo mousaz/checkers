@@ -78,6 +78,9 @@
     <AppxBundle>Always</AppxBundle>
     <AppxBundlePlatforms>x86|x64</AppxBundlePlatforms>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+    <PackageCertificateThumbprint>18C66E896878F63D52BB4F9C48A698B309DE03FE</PackageCertificateThumbprint>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -155,6 +158,7 @@
     </Midl>
   </ItemGroup>
   <ItemGroup>
+    <None Include="checkers_TemporaryKey.pfx" />
     <None Include="PropertySheet.props" />
     <Text Include="readme.txt">
       <DeploymentContent>false</DeploymentContent>

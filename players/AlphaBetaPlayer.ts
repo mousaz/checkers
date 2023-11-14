@@ -18,8 +18,8 @@ export default class AlphaBetaPlayer extends Player {
   public play(board: Board): Promise<{ result: MoveOutcome; move?: Move }> {
     return new Promise((resolve, _) => {
       setTimeout(() => {
-        const moves = board.getAllPossibleMovesForPieces(this._color);
-        if (!moves?.length) {
+        const possibleMoves = board.getAllPossibleMovesForPieces(this._color);
+        if (!possibleMoves?.length) {
           // player has no moves; so player lost game
           resolve({ result: "NoMove" });
           return;
@@ -45,7 +45,9 @@ export default class AlphaBetaPlayer extends Player {
         board.subscribeToEvent("BoardUpdated", handler);
 
         const nextMove =
-          moves.length === 1 ? moves[0] : this.getNextMove(board.getTiles());
+          possibleMoves.length === 1
+            ? possibleMoves[0]
+            : this.getNextMove(board.getTiles());
         board.movePiece(nextMove.from, nextMove.to);
       }, 1000);
     });
@@ -179,12 +181,12 @@ export default class AlphaBetaPlayer extends Player {
     );
 
     const attackingWeight = 2 * Math.pow(2, numOfKings);
-    const menWeight = 4;
-    const middlePiecesWeight = 5;
-    const possibleMovesWeight = 1;
+    const menWeight = 2;
+    const middlePiecesWeight = 10;
+    const possibleMovesWeight = 2;
     const numOfUnsafePiecesWeight =
       numOfMen + numOfKings < numOfOpponentKings + numOfOpponentMen + 5 ? 3 : 1;
-    const kingsWeight = numOfKings - numOfOpponentKings < 2 ? 10 : 5;
+    const kingsWeight = 10;
 
     let value =
       menWeight * numOfMen +
@@ -317,16 +319,12 @@ export default class AlphaBetaPlayer extends Player {
 
   private shuffle(children: MoveState[]): MoveState[] {
     if (children.length <= 2) return children;
-    let shuffled: MoveState[] = [...children];
-    for (let i = 0; i < children.length / 2; i++) {
-      const randomIndex = (Math.random() * 100) % children.length;
-      shuffled = [
-        ...shuffled.slice(randomIndex),
-        ...shuffled.slice(0, randomIndex),
-      ];
+    for (let i = 0; i < children.length; i++) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [children[i], children[j]] = [children[j], children[i]];
     }
 
-    return shuffled;
+    return children;
   }
 
   private getExpansionDepth(level: PlayerLevel | number): number {
