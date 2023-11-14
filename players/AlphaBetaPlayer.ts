@@ -178,8 +178,8 @@ export default class AlphaBetaPlayer extends Player {
       numOfOpponentMen: ${numOfOpponentMen}, numOfUnsafePieces: ${numOfUnsafePieces}`,
     );
 
-    const attackingWeight = 3 * Math.pow(3, numOfKings);
-    const menWeight = 3;
+    const attackingWeight = 2 * Math.pow(2, numOfKings);
+    const menWeight = 4;
     const middlePiecesWeight = 5;
     const possibleMovesWeight = 1;
     const numOfUnsafePiecesWeight =
@@ -195,12 +195,6 @@ export default class AlphaBetaPlayer extends Player {
       menWeight * numOfOpponentMen -
       kingsWeight * numOfOpponentKings -
       numOfUnsafePiecesWeight * numOfUnsafePieces;
-
-    if (numOfKings + numOfMen === 0 || !numOfPossibleMoves) {
-      // set value to a small number to avoid this state
-      // because it means that player lost game
-      value = -1000;
-    }
 
     console.log(`Value is: ${value}`);
     return value;
@@ -340,11 +334,11 @@ export default class AlphaBetaPlayer extends Player {
       case "Beginner":
         return 2;
       case "Normal":
-        return 5;
+        return 4;
       case "Expert":
         return 8;
       default:
-        return typeof level === "number" && level >= 2 ? level : 3;
+        return typeof level === "number" && level > 0 ? level : 2;
     }
   }
 }

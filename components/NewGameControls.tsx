@@ -58,6 +58,7 @@ export default function NewGameControls({
       {
         name: "",
         type: "Human",
+        level: "Beginner",
       },
       {
         name: "",

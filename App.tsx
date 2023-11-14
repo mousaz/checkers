@@ -112,8 +112,15 @@ function App(): JSX.Element {
 
   function showPossibleMoves(tileIndex: number): void {
     if (!gameBoard || !currentPlayer) return;
-    const moves = gameBoard!.getPossibleMovesForPiece(tileIndex);
-    setHighlightedTiles(moves.map(m => m.to));
+    const allMoves = gameBoard.getAllPossibleMovesForPieces(
+      currentPlayer.color,
+    );
+    setHighlightedTiles(
+      allMoves.reduce((moves: number[], m: Move) => {
+        if (m.from === tileIndex) moves.push(m.to);
+        return moves;
+      }, []),
+    );
   }
 
   function updateStateHistory(move: Move): boolean {
